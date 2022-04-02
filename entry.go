@@ -4,7 +4,7 @@ import "encoding/binary"
 
 const entryHeaderSize = 10
 
-const (
+const ( // mark 的值
 	PUT uint16 = iota
 	DEL
 )

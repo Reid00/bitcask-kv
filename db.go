@@ -94,7 +94,7 @@ func (db *MiniDB) Merge() error {
 
 		// 获取文件名
 		dbFileName := db.dbFile.File.Name()
-		// 关闭文件
+		// 关闭j旧的文件
 		db.dbFile.File.Close()
 		// 删除旧的数据文件
 		os.Remove(dbFileName)
@@ -105,10 +105,93 @@ func (db *MiniDB) Merge() error {
 		mergeDBFile.File.Close()
 		// 临时数据文件 变更为新的数据文件
 		os.Rename(mergerDBFileName, db.dirPath+string(os.PathSeparator)+FileName)
+
+		db.dbFile = mergeDBFile
 	}
+	return nil
 
 }
 
+// 写入数据
+func (db *MiniDB) Put(key, value []byte) (err error) {
+	if len(key) == 0 {
+		return
+	}
+
+	db.mu.Lock() //读写锁的互斥锁
+	defer db.mu.Unlock()
+
+	offset := db.dbFile.Offset // 现在db 中dbFile的entry 的长度，也是新入数据的偏移量
+	// 封装成entry
+	entry := NewEntry(key, value, PUT)
+
+	// 把entry 写入db 的dbFile 中
+	db.dbFile.Write(entry)
+
+	// 写入在内存中的索引
+	db.indexes[string(key)] = offset // 如果已经存在，会替换原来的值
+	return
+}
+
+// 读取数据
+func (db *MiniDB) Get(key []byte) (val []byte, err error) {
+	if len(key) == 0 {
+		return
+	}
+
+	db.mu.RLock() //读写锁的读锁
+	defer db.mu.RUnlock()
+
+	// 从内存中读取索引信息
+	offset, ok := db.indexes[string(key)]
+	// 如果不存在key
+	if !ok {
+		return
+	}
+
+	// 从磁盘中读取数据
+	var e *Entry
+	e, err = db.dbFile.Read(offset)
+	if err != nil && err != io.EOF { // err != nil 已经可以判断， 如果 != nil 并且== EOF 代表空值
+		return
+	}
+
+	if e != nil { // entry 是有效的
+		val = e.Value
+	}
+	return
+}
+
+// 删除数据
+func (db *MiniDB) Del(key []byte) (err error) {
+	if len(key) == 0 {
+		return
+	}
+
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	// 从内存中加载索引信息, 判断是否存在
+	_, ok := db.indexes[string(key)]
+	// 如果不存在，忽略
+	if !ok {
+		return
+	}
+
+	// 封装成Entry 并写入, append 方式，即便是删除，也是用写入mark 为DEL 的entry
+	e := NewEntry(key, nil, DEL)
+
+	// 写入硬盘
+	err = db.dbFile.Write(e)
+	if err != nil {
+		return
+	}
+	// 删除内存索引
+	delete(db.indexes, string(key))
+	return
+}
+
+// 从文件中加载索引信息
 func (db *MiniDB) loadIndexesFromFile() {
 	if db.dbFile == nil {
 		return
