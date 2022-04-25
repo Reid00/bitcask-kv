@@ -9,13 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// func TestNewFileIOSelector(t *testing.T) {
-// 	testNewIOSelector(t, 0)
-// }
+func TestNewFileIOSelector(t *testing.T) {
+	testNewIOSelector(t, 0)
+}
 
-// func TestNewMMapIOSelector(t *testing.T) {
-// 	testNewIOSelector(t, 1)
-// }
+func TestNewMMapIOSelector(t *testing.T) {
+	testNewIOSelector(t, 1)
+}
 
 func TestFileIOSelector_Write(t *testing.T) {
 	testIOSelectorWrite(t, 0)
@@ -23,6 +23,38 @@ func TestFileIOSelector_Write(t *testing.T) {
 
 func TestMMapIOSelector_Write(t *testing.T) {
 	testIOSelectorWrite(t, 1)
+}
+
+func TestFileIOSelector_Read(t *testing.T) {
+	testIOSelectorRead(t, 0)
+}
+
+func TestMMapIOSelector_Read(t *testing.T) {
+	testIOSelectorRead(t, 1)
+}
+
+func TestFileIOSelector_Sync(t *testing.T) {
+	testIOSelectorSync(t, 0)
+}
+
+func TestMMapIOSelector_Sync(t *testing.T) {
+	testIOSelectorSync(t, 1)
+}
+
+func TestFileIOSelector_Close(t *testing.T) {
+	testIOSelectorClose(t, 0)
+}
+
+func TestMMapIOSelector_Close(t *testing.T) {
+	testIOSelectorClose(t, 1)
+}
+
+func TestFileIOSelector_Delete(t *testing.T) {
+	testIOSelectorDelete(t, 0)
+}
+
+func TestMMapIOSelector_Delete(t *testing.T) {
+	testIOSelectorDelete(t, 1)
 }
 
 func testNewIOSelector(t *testing.T, ioType uint8) {
@@ -90,11 +122,11 @@ func testIOSelectorWrite(t *testing.T, ioType uint8) {
 	// 新建selector 产生的error
 	assert.Nil(t, err)
 
-	// defer func() {
-	// 	if selector != nil {
-	// 		_ = selector.Delete()
-	// 	}
-	// }()
+	defer func() {
+		if selector != nil {
+			_ = selector.Delete()
+		}
+	}()
 
 	type fields struct {
 		selector IOSelector
@@ -314,7 +346,7 @@ func testIOSelectorClose(t *testing.T, ioType uint8) {
 
 }
 
-func testIOSelectDelete(t *testing.T, ioType uint8) {
+func testIOSelectorDelete(t *testing.T, ioType uint8) {
 	tests := []struct {
 		name    string
 		wantErr bool

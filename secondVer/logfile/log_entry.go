@@ -69,8 +69,8 @@ func EncodeEntry(e *LogEntry) ([]byte, int) {
 	return buf, size
 }
 
-// 解析entry 的header 和实际占用的字节长度
-// entryheader 最大25个字节，使用putVarint编码，较小数字不会占满所有字节
+// 解析entry 的header 和实际占用的字节长度.
+// entryheader 最大25个字节，使用putVarint编码，较小数字不会占满所有字
 func decodeHeader(buf []byte) (*entryHeader, int64) {
 	if len(buf) <= 4 { // 只有crc 没有具体data
 		return nil, 0
@@ -100,7 +100,7 @@ func decodeHeader(buf []byte) (*entryHeader, int64) {
 	return &entry, int64(index)
 }
 
-// 获取crc 如果logEntry 的key value 发生变化之后
+// 获取logEntry crc
 // h: entry header 除去crc32的四个字节
 func getEntryCrc(e *LogEntry, h []byte) uint32 {
 
