@@ -34,13 +34,13 @@ const (
 	LogLevelAll   = LogLevelDebug
 )
 
-var _log = New()
-
 func init() {
 	SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	// SetHighlighting(runtime.GOOS != "windows")
 	SetHighlighting(true)
 }
+
+var _log = New()
 
 func New() *Logger {
 	return NewLogger(os.Stderr, "")
