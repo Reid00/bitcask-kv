@@ -217,6 +217,7 @@ func (s *Set) SDiff(keys ...string) (vals [][]byte) {
 	// var flag bool // 是否是其他key 的成员
 
 	for k := range s.record[keys[0]] {
+		// FIXED above
 		var flag bool
 		// 一一比较 k 是否是后面key的member
 		for i := 1; i < len(keys); i++ {
