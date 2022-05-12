@@ -42,6 +42,10 @@ func (l *List) LPush(key, value []byte) {
 	l.push(key, value, true)
 }
 
+func (l *List) RPush(key, value []byte) {
+	l.push(key, value, false)
+}
+
 func (l *List) push(key, value []byte, isLeft bool) {
 	listKey := string(key)
 	if l.records[listKey] == nil { //not exist key listKey
@@ -66,9 +70,123 @@ func (l *List) push(key, value []byte, isLeft bool) {
 	} else {
 		metaInfo.tailSeq++
 	}
-
 }
 
+func (l *List) LPop(key []byte) []byte {
+	return l.pop(key, true)
+}
+
+func (l *List) RPop(key []byte) []byte {
+	return l.pop(key, false)
+}
+
+func (l *List) pop(key []byte, isLeft bool) []byte {
+
+	listKey := string(key)
+	if l.records[listKey] == nil {
+		return nil
+	}
+
+	metaInfo := l.getMeta(key)
+	size := metaInfo.tailSeq - metaInfo.headSeq - 1
+	if size <= 0 {
+		l.metas[listKey] = &meta{
+			headSeq: initialSeq,
+			tailSeq: initialSeq + 1,
+		}
+		return nil
+	}
+
+	seq := metaInfo.headSeq + 1
+	if !isLeft {
+		seq = metaInfo.tailSeq - 1
+	}
+
+	encKey := EncodeKey(key, seq)
+	value, _ := l.records[listKey].Delete(encKey)
+	var val []byte
+
+	if value != nil {
+		val, _ = value.([]byte)
+	}
+
+	// update meta
+	if isLeft {
+		metaInfo.headSeq++
+	} else {
+		metaInfo.tailSeq--
+	}
+
+	return val
+}
+
+func (l *List) LIndex(key []byte, index int) []byte {
+
+	listKey := string(key)
+	if _, ok := l.records[listKey]; !ok { // 不存在key
+		return nil
+	}
+
+	metaInfo := l.getMeta(key)
+	size := metaInfo.tailSeq - metaInfo.headSeq - 1
+
+	newIndex, ok := l.validIndex(listKey, index, size)
+	if !ok {
+		return nil
+	}
+
+	encKey := EncodeKey(key, metaInfo.headSeq+uint32(newIndex)+1)
+
+	value, _ := l.records[listKey].Search(encKey)
+	if value != nil {
+		val, _ := value.([]byte)
+		return val
+	}
+	return nil
+}
+
+func (l *List) LSet(key []byte, index int, value []byte) bool {
+	listKey := string(key)
+	if _, ok := l.records[listKey]; !ok {
+		return false
+	}
+
+	metaInfo := l.getMeta(key)
+	size := metaInfo.tailSeq - metaInfo.headSeq - 1
+	newIndex, ok := l.validIndex(listKey, index, size)
+	if !ok {
+		return false
+	}
+
+	encKey := EncodeKey(key, metaInfo.headSeq+uint32(newIndex)+1)
+	l.records[listKey].Insert(encKey, value)
+	return true
+}
+
+func (l *List) LLen(key []byte) uint32 {
+	listKey := string(key)
+	if _, ok := l.records[listKey]; !ok {
+		return 0
+	}
+
+	metaInfo := l.getMeta(key)
+	size := metaInfo.tailSeq - metaInfo.headSeq - 1
+	return size
+}
+
+func (l *List) validIndex(key string, index int, size uint32) (int, bool) {
+	item := l.records[key]
+	if item == nil || size <= 0 {
+		return 0, false
+	}
+
+	if index < 0 {
+		index += int(size)
+	}
+
+	return index, index >= 0 && index < int(size)
+
+}
 func (l *List) getMeta(key []byte) *meta {
 	metaInfo, ok := l.metas[string(key)]
 	if !ok {
