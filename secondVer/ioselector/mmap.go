@@ -12,6 +12,7 @@ type MMapSelector struct {
 	bufLen int64
 }
 
+// NewMMapSelector create a new mmap selector.
 func NewMMapSelector(fname string, fsize int64) (IOSelector, error) {
 	if fsize <= 0 {
 		return nil, ErrInvalidFsize
@@ -30,7 +31,7 @@ func NewMMapSelector(fname string, fsize int64) (IOSelector, error) {
 
 func (m *MMapSelector) Write(b []byte, offset int64) (int, error) {
 	length := int64(len(b))
-	
+
 	if length <= 0 {
 		return 0, nil
 	}

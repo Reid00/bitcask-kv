@@ -13,7 +13,13 @@ const MaxHeaderSize = 25
 
 type EntryType byte
 
-const TypeDelete EntryType = iota + 1 // mark as delete entry
+const (
+	// TypeDelete represents entry type is delete.
+	TypeDelete EntryType = iota + 1
+
+	// TypeListMeta represents entry is list meta.
+	TypeListMeta
+)
 
 type LogEntry struct {
 	Key      []byte
