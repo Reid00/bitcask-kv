@@ -80,6 +80,21 @@ func (db *RoseDB) LLen(key []byte) int {
 
 }
 
+// LIndex returns the element at index index in the list stored at key.
+// The index is zero-based, so 0 means the first element, 1 the second element and so on. 
+// Negative indices can be used to designate elements starting at the tail of the list. 
+// Here, -1 means the last element, -2 means the penultimate and so forth.
+func (db *RoseDB) LIndex(key []byte) []byte {
+	db.listIndex.mu.RLock()
+	defer db.listIndex.mu.RUnlock()
+
+	if db.listIndex.trees[string(key)] == nil {
+		return nil
+	}
+
+	
+	
+}
 func (db *RoseDB) encodeListKey(key []byte, seq uint32) []byte {
 	buf := make([]byte, len(key)+4)
 	binary.LittleEndian.PutUint32(buf[:4], seq)
