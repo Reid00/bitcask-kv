@@ -1,21 +1,27 @@
 package kv_engine
 
 import (
+	"encoding/binary"
 	"errors"
+	"io"
 	"kv_engine/ds/art"
 	"kv_engine/ds/zset"
 	"kv_engine/flock"
 	"kv_engine/ioselector"
 	"kv_engine/logfile"
+	"kv_engine/logger"
 	"kv_engine/util"
 	"math"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
+	"time"
 )
 
 var (
@@ -281,13 +287,288 @@ func (db *RoseDB) initLogFile(dataType DataType) error {
 	defer db.mu.Unlock()
 
 	if db.archivedLogFiles[dataType] != nil {
+		return nil
+	}
 
+	opts := db.opts
+	ftype, iotype := logfile.FileType(dataType), logfile.IOType(opts.IoType)
+
+	lf, err := logfile.OpenLogFile(opts.DBPath, logfile.InitialLogFileId, opts.LogFileSizeThreshold, ftype, iotype)
+	if err != nil {
+		return nil
+	}
+
+	db.discards[dataType].setTotal(lf.Fid, uint32(opts.LogFileSizeThreshold))
+	db.activeLogFiles[dataType] = lf
+	return nil
+}
+
+func (db *RoseDB) handleLogFileGC() {
+	if db.opts.LogFileGCInterval <= 0 {
+		return
+	}
+
+	quitSig := make(chan os.Signal, 1)
+	signal.Notify(quitSig, os.Interrupt, os.Kill, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	ticker := time.NewTicker(db.opts.LogFileGCInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if atomic.LoadInt32(&db.gcState) > 0 {
+				logger.Warn("log file gc is running, skip it")
+				break
+			}
+
+			for dType := String; dType < logFileTypeNum; dType++ {
+				go func(dataType DataType) {
+					err := db.doRunGC(dataType, -1, db.opts.LogFileGCRatio)
+					if err != nil {
+						logger.Errorf("log file gc err, dataType: [%v], err : [%v]", dataType, err)
+					}
+				}(dType)
+			}
+		case <-quitSig:
+			return
+		}
 	}
 
 }
 
-func (db *RoseDB) loadIndexFromLogFiles() {
+func (db *RoseDB) doRunGC(dataType DataType, specifiedFid int, gcRatio float64) error {
+	atomic.AddInt32(&db.gcState, 1)
+	defer atomic.AddInt32(&db.gcState, -1)
 
+	maybeRewriteStrs := func(fid uint32, offset int64, ent *logfile.LogEntry) error {
+		db.strIndex.mu.Lock()
+		defer db.strIndex.mu.Unlock()
+		indexVal := db.strIndex.idxTree.Get(ent.Key)
+		if indexVal == nil {
+			return nil
+		}
+
+		node, _ := indexVal.(*indexNode)
+		if node != nil && node.fid == fid && node.offset == offset {
+			// rewrite entry
+			valuePos, err := db.writeLogEntry(ent, String)
+			if err != nil {
+				return err
+			}
+			// update index
+			if err = db.updateIndexTree(ent, valuePos, false, String); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	maybeRewriteList := func(fid uint32, offset int64, ent *logfile.LogEntry) error {
+		db.listIndex.mu.Lock()
+		defer db.listIndex.mu.Unlock()
+		var listKey = ent.Key
+		if ent.Type != logfile.TypeListMeta {
+			listKey, _ = db.decodeListKey(ent.Key)
+		}
+		if db.listIndex.trees[string(listKey)] == nil {
+			return nil
+		}
+		db.listIndex.idxTree = db.listIndex.trees[string(listKey)]
+		indexVal := db.listIndex.idxTree.Get(listKey)
+		if indexVal == nil {
+			return nil
+		}
+
+		node, _ := indexVal.(*indexNode)
+		if node != nil && node.fid == fid && node.offset == offset {
+			valuePos, err := db.writeLogEntry(ent, List)
+			if err != nil {
+				return err
+			}
+			if err = db.updateIndexTree(ent, valuePos, false, List); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	maybeRewriteHash := func(fid uint32, offset int64, ent *logfile.LogEntry) error {
+		db.hashIndex.mu.Lock()
+		defer db.hashIndex.mu.Unlock()
+		key, field := db.decodeKey(ent.Key)
+		if db.hashIndex.trees[string(key)] == nil {
+			return nil
+		}
+		db.hashIndex.idxTree = db.hashIndex.trees[string(key)]
+		indexVal := db.hashIndex.idxTree.Get(field)
+		if indexVal == nil {
+			return nil
+		}
+
+		node, _ := indexVal.(*indexNode)
+		if node != nil && node.fid == fid && node.offset == offset {
+			// rewrite entry
+			valuePos, err := db.writeLogEntry(ent, Hash)
+			if err != nil {
+				return err
+			}
+			// update index
+			entry := &logfile.LogEntry{Key: field, Value: ent.Value}
+			_, size := logfile.EncodeEntry(ent)
+			valuePos.entrySize = size
+			if err = db.updateIndexTree(entry, valuePos, false, Hash); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	maybeRewriteSets := func(fid uint32, offset int64, ent *logfile.LogEntry) error {
+		db.setIndex.mu.Lock()
+		defer db.setIndex.mu.Unlock()
+		if db.setIndex.trees[string(ent.Key)] == nil {
+			return nil
+		}
+		db.setIndex.idxTree = db.setIndex.trees[string(ent.Key)]
+		if err := db.setIndex.murhash.Write(ent.Value); err != nil {
+			logger.Fatalf("fail to write murmur hash: %v", err)
+		}
+		sum := db.setIndex.murhash.EncodeSum128()
+		db.setIndex.murhash.Reset()
+
+		indexVal := db.setIndex.idxTree.Get(sum)
+		if indexVal == nil {
+			return nil
+		}
+		node, _ := indexVal.(*indexNode)
+		if node != nil && node.fid == fid && node.offset == offset {
+			// rewrite entry
+			valuePos, err := db.writeLogEntry(ent, Set)
+			if err != nil {
+				return err
+			}
+			// update index
+			entry := &logfile.LogEntry{Key: sum, Value: ent.Value}
+			_, size := logfile.EncodeEntry(ent)
+			valuePos.entrySize = size
+			if err = db.updateIndexTree(entry, valuePos, false, Set); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	maybeRewriteZSet := func(fid uint32, offset int64, ent *logfile.LogEntry) error {
+		db.zsetIndex.mu.Lock()
+		defer db.zsetIndex.mu.Unlock()
+		key, _ := db.decodeKey(ent.Key)
+		if db.zsetIndex.trees[string(key)] == nil {
+			return nil
+		}
+		db.zsetIndex.idxTree = db.zsetIndex.trees[string(key)]
+		if err := db.zsetIndex.murhash.Write(ent.Value); err != nil {
+			logger.Fatalf("fail to write murmur hash: %v", err)
+		}
+		sum := db.zsetIndex.murhash.EncodeSum128()
+		db.zsetIndex.murhash.Reset()
+
+		indexVal := db.zsetIndex.idxTree.Get(sum)
+		if indexVal == nil {
+			return nil
+		}
+		node, _ := indexVal.(*indexNode)
+		if node != nil && node.fid == fid && node.offset == node.offset {
+			valuePos, err := db.writeLogEntry(ent, ZSet)
+			if err != nil {
+				return err
+			}
+			entry := &logfile.LogEntry{Key: sum, Value: ent.Value}
+			_, size := logfile.EncodeEntry(ent)
+			valuePos.entrySize = size
+			if err = db.updateIndexTree(entry, valuePos, false, ZSet); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	activeLogFile := db.getActiveLogFile(dataType)
+	if activeLogFile == nil {
+		return nil
+	}
+	if err := db.discards[dataType].sync(); err != nil {
+		return err
+	}
+	ccl, err := db.discards[dataType].getCCL(activeLogFile.Fid, gcRatio)
+	if err != nil {
+		return err
+	}
+
+	for _, fid := range ccl {
+		if specifiedFid >= 0 && uint32(specifiedFid) != fid {
+			continue
+		}
+		archivedFile := db.getArchivedLogFile(dataType, fid)
+		if archivedFile == nil {
+			continue
+		}
+
+		var offset int64
+		for {
+			ent, size, err := archivedFile.ReadLogEntry(offset)
+			if err != nil {
+				if err == io.EOF || err == logfile.ErrEndOfEntry {
+					break
+				}
+				return err
+			}
+			var off = offset
+			offset += size
+			if ent.Type == logfile.TypeDelete {
+				continue
+			}
+			ts := time.Now().Unix()
+			if ent.ExpireAt != 0 && ent.ExpireAt <= ts {
+				continue
+			}
+			var rewriteErr error
+			switch dataType {
+			case String:
+				rewriteErr = maybeRewriteStrs(archivedFile.Fid, off, ent)
+			case List:
+				rewriteErr = maybeRewriteList(archivedFile.Fid, off, ent)
+			case Hash:
+				rewriteErr = maybeRewriteHash(archivedFile.Fid, off, ent)
+			case Set:
+				rewriteErr = maybeRewriteSets(archivedFile.Fid, off, ent)
+			case ZSet:
+				rewriteErr = maybeRewriteZSet(archivedFile.Fid, off, ent)
+			}
+			if rewriteErr != nil {
+				return rewriteErr
+			}
+		}
+
+		// delete older log file.
+		db.mu.Lock()
+		delete(db.archivedLogFiles[dataType], fid)
+		_ = archivedFile.Delete()
+		db.mu.Unlock()
+		// clear discard state.
+		db.discards[dataType].clear(fid)
+	}
+	return nil
+}
+
+func (db *RoseDB) decodeKey(key []byte) ([]byte, []byte) {
+	var index int
+	keySize, i := binary.Varint(key[index:])
+	index += i
+	_, i = binary.Varint(key[index:])
+	index += i
+	sep := index + int(keySize)
+	return key[index:sep], key[sep:]
 }
 
 // write entry to log file.

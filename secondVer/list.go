@@ -2,6 +2,7 @@ package kv_engine
 
 import (
 	"encoding/binary"
+	"errors"
 	"kv_engine/ds/art"
 	"kv_engine/logfile"
 	"kv_engine/logger"
@@ -81,20 +82,131 @@ func (db *RoseDB) LLen(key []byte) int {
 }
 
 // LIndex returns the element at index index in the list stored at key.
-// The index is zero-based, so 0 means the first element, 1 the second element and so on. 
-// Negative indices can be used to designate elements starting at the tail of the list. 
+// The index is zero-based, so 0 means the first element, 1 the second element and so on.
+// Negative indices can be used to designate elements starting at the tail of the list.
 // Here, -1 means the last element, -2 means the penultimate and so forth.
-func (db *RoseDB) LIndex(key []byte) []byte {
+func (db *RoseDB) LIndex(key []byte, index int) ([]byte, error) {
 	db.listIndex.mu.RLock()
 	defer db.listIndex.mu.RUnlock()
 
 	if db.listIndex.trees[string(key)] == nil {
-		return nil
+		return nil, ErrKeyNotFound
 	}
 
-	
-	
+	db.listIndex.idxTree = db.listIndex.trees[string(key)]
+
+	headSeq, tailSeq, err := db.listMeta(key)
+	if err != nil {
+		return nil, err
+	}
+
+	var seq uint32
+	// logical address to physical seq
+	seq, err = db.convertLogicalIndexToSeq(key, index)
+	if err != nil {
+		return nil, err
+	}
+
+	// normalize seq
+	if seq >= tailSeq || seq <= headSeq {
+		return nil, errors.New("out of range")
+	}
+
+	encKey := db.encodeListKey(key, seq)
+
+	val, err := db.getVal(encKey, List)
+	if err != nil {
+		return nil, err
+	}
+	return val, nil
+
 }
+
+// LRange returns the specified elements of the list stored at key.
+// The offsets start and stop are zero-based indexes,
+// with 0 being the first element of the list (the head of the list),
+// 1 being the next element and so on.
+// These offsets can also be negative numbers indicating offsets starting at the end of the list.
+// For example, -1 is the last element of the list, -2 the penultimate, and so on.
+// If start is larger than the end of the list, an empty list is returned.
+// If stop is larger than the actual end of the list, Redis will treat it like the last element of the list.
+func (db *RoseDB) LRange(key []byte, start, end int) (values [][]byte, err error) {
+	db.listIndex.mu.RLock()
+	defer db.listIndex.mu.RUnlock()
+
+	if db.listIndex.trees[string(key)] == nil {
+		return nil, ErrKeyNotFound
+	}
+
+	db.listIndex.idxTree = db.listIndex.trees[string(key)]
+	// get List DataType meta info
+	headSeq, tailSeq, err := db.listMeta(key)
+	if err != nil {
+		return nil, err
+	}
+
+	var startSeq, endSeq uint32
+
+	// logical address to physical address
+	startSeq, err = db.convertLogicalIndexToSeq(key, start)
+	if err != nil {
+		return nil, err
+	}
+	endSeq, err = db.convertLogicalIndexToSeq(key, end)
+	if err != nil {
+		return nil, err
+	}
+	// normalize startSeq
+	if startSeq <= headSeq {
+		startSeq = headSeq + 1
+	}
+	if startSeq >= tailSeq {
+		return nil, errors.New("start index out of range")
+	}
+	// normalize endSeq
+	if endSeq >= tailSeq {
+		endSeq = tailSeq - 1
+	}
+	if endSeq <= headSeq {
+		return nil, errors.New("end index out of range")
+	}
+
+	if startSeq > endSeq {
+		return nil, errors.New("start physical seq lager than end physical seq")
+	}
+
+	// the endSeq value is including
+	for seq := startSeq; seq < endSeq+1; seq++ {
+		encKey := db.encodeListKey(key, seq)
+		val, err := db.getVal(encKey, List)
+
+		if err != nil {
+			return nil, err
+		}
+		values = append(values, val)
+	}
+	return values, nil
+}
+
+// convertLogicalIndexToSeq convert logical index to physical seq
+func (db *RoseDB) convertLogicalIndexToSeq(key []byte, index int) (uint32, error) {
+	headSeq, tailSeq, err := db.listMeta(key)
+	if err != nil {
+		return initialListSeq, err
+	}
+	if headSeq == initialListSeq && tailSeq == initialListSeq+1 {
+		return initialListSeq, ErrKeyNotFound
+	}
+	var seq uint32
+
+	if index >= 0 {
+		seq = headSeq + uint32(index) + 1
+	} else {
+		seq = tailSeq - uint32(-index)
+	}
+	return seq, nil
+}
+
 func (db *RoseDB) encodeListKey(key []byte, seq uint32) []byte {
 	buf := make([]byte, len(key)+4)
 	binary.LittleEndian.PutUint32(buf[:4], seq)

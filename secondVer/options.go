@@ -8,7 +8,7 @@ const (
 	// KeyValueMemMode key and value are both in memory, read operation will be very fast in this mode.
 	// Because there is no disk seek, just get value from the corresponding data structures in memory.
 	// This mode is suitable for scenarios where the value are relatively small.
-	keyValueMemMode DataIndexMode = iota
+	KeyValueMemMode DataIndexMode = iota
 
 	// KeyOnlyMemMode only key in memory, there is a disk seek while getting a value.
 	// Because values are in log file on disk.
