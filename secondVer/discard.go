@@ -118,15 +118,19 @@ func (d *discard) getCCL(activeFid uint32, ratio float64) ([]uint32, error) {
 }
 
 func (d *discard) listenUpdates() {
-	for {
-		select {
-		case idxNode, ok := <-d.valChan:
-			if !ok {
-				return
-			}
-			d.incrDiscard(idxNode.fid, idxNode.entrySize)
-		}
+
+	for v := range d.valChan {
+		d.incrDiscard(v.fid, v.entrySize)
 	}
+	// for {
+	// 	select {
+	// 	case idxNode, ok := <-d.valChan:
+	// 		if !ok {
+	// 			return
+	// 		}
+	// 		d.incrDiscard(idxNode.fid, idxNode.entrySize)
+	// 	}
+	// }
 }
 
 func (d *discard) setTotal(fid uint32, totalSize uint32) {

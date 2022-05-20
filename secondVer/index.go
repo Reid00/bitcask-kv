@@ -337,18 +337,3 @@ func (db *RoseDB) updateIndexTree(ent *logfile.LogEntry, pos *valuePos, sendDisc
 	}
 	return nil
 }
-
-func (db *RoseDB) sendDiscard(oldVal interface{}, updated bool, dataType DataType) {
-	if !updated || oldVal == nil {
-		return
-	}
-	node, _ := oldVal.(*indexNode)
-	if node == nil || node.entrySize <= 0 {
-		return
-	}
-	select {
-	case db.discards[dataType].valChan <- node:
-	default:
-		logger.Warn("send to discard chan fail")
-	}
-}

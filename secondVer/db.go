@@ -201,6 +201,59 @@ func Open(opts Options) (*RoseDB, error) {
 	return db, nil
 }
 
+// Closed db and save relative configs
+func (db *RoseDB) Close() error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	if db.fileLock != nil {
+		_ = db.fileLock.Release()
+	}
+	// close and sync active file
+	for _, activeFile := range db.activeLogFiles {
+		activeFile.Close()
+	}
+	// close the archived file
+	for _, archived := range db.archivedLogFiles {
+		for _, file := range archived {
+			file.Sync()
+			file.Close()
+		}
+	}
+
+	// close discard files
+	for _, discard := range db.discards {
+		discard.close()
+	}
+	atomic.StoreUint32(&db.closed, 1)
+	return nil
+}
+
+// Sync persist the db files to stable storage
+func (db *RoseDB) Sync() error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	// sync all active files
+	for _, active := range db.activeLogFiles {
+		if err := active.Sync(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (db *RoseDB) RunLogFileGC(dataType DataType, fid int, gcRatio float64) error {
+	if atomic.LoadInt32(&db.gcState) > 0 {
+		return ErrGCRunning
+	}
+	return db.doRunGC(dataType, fid, gcRatio)
+}
+
+func (db *RoseDB) isClosed() bool {
+	return atomic.LoadUint32(&db.closed) == 1
+}
+
 func (db *RoseDB) initDiscard() error {
 	discardPath := filepath.Join(db.opts.DBPath, discardFilePath)
 	if !util.PathExist(discardPath) {
@@ -561,6 +614,25 @@ func (db *RoseDB) doRunGC(dataType DataType, specifiedFid int, gcRatio float64) 
 	return nil
 }
 
+// encodeKey for hash[key + field]
+// Zset need to encode
+func (db *RoseDB) encodeKey(key, subKey []byte) []byte {
+	header := make([]byte, encodeHeaderSize)
+	var index int
+	index += binary.PutVarint(header[index:], int64(len(key)))
+	index += binary.PutVarint(header[index:], int64(len(subKey)))
+
+	length := len(key) + len(subKey)
+	if length > 0 {
+		buf := make([]byte, length+index)
+		copy(buf[:index], header[:index])
+		copy(buf[index:index+len(key)], key)
+		copy(buf[index+len(key):], subKey)
+		return buf
+	}
+	return header[:index]
+}
+
 func (db *RoseDB) decodeKey(key []byte) ([]byte, []byte) {
 	var index int
 	keySize, i := binary.Varint(key[index:])
@@ -637,4 +709,19 @@ func (db *RoseDB) getArchivedLogFile(dataType DataType, fid uint32) *logfile.Log
 		lf = db.archivedLogFiles[dataType][fid]
 	}
 	return lf
+}
+
+func (db *RoseDB) sendDiscard(oldVal interface{}, updated bool, dataType DataType) {
+	if !updated || oldVal == nil {
+		return
+	}
+	node, _ := oldVal.(*indexNode)
+	if node == nil || node.entrySize <= 0 {
+		return
+	}
+	select {
+	case db.discards[dataType].valChan <- node:
+	default:
+		logger.Warn("send to discard chan fail")
+	}
 }
