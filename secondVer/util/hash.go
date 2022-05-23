@@ -2,6 +2,8 @@ package util
 
 import "unsafe"
 
+//go:linkname runtimeMemhash runtime.memhash
+//go:noescape
 func runtimeMemhash(p unsafe.Pointer, seed, s uintptr) uintptr
 
 // MemHash is the hash function used by go map, it utilizes available hardware instructions(behaves
