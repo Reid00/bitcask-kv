@@ -33,6 +33,27 @@ func TestOpen(t *testing.T) {
 	// })
 }
 
+func TestLogFileGC(t *testing.T) {
+	path := filepath.Join("/tmp", "kv_engine")
+	opts := DefaultOptions(path)
+	opts.LogFileGCInterval = 7 * time.Second
+	opts.LogFileGCRatio = 0.00001
+
+	db, err := Open(opts)
+	if err != nil {
+		t.Error("open db err: ", err)
+	}
+	defer destroyDB(db)
+
+	writeCount := 800000
+	for i := 0; i < writeCount; i++ {
+		
+		err := db.Set(GetKey(i), GetValue128B())
+		assert.Nil(t, err, "err is not nil")
+	}
+	
+}
+
 func destroyDB(db *RoseDB) {
 	if db != nil {
 		err := os.RemoveAll(db.opts.DBPath)
