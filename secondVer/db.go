@@ -37,6 +37,8 @@ var (
 	ErrWrongValueType = errors.New("value is not an integer")
 
 	ErrGCRunning = errors.New("log file gc is running, retry later")
+
+	ErrIndexOutOfRange = errors.New("index out of range")
 )
 
 const (

@@ -257,6 +257,9 @@ func (db *RoseDB) saveListMeta(key []byte, headSeq, tailSeq uint32) error {
 
 func (db *RoseDB) pushInternal(key, val []byte, isLeft bool) error {
 	headSeq, tailSeq, err := db.listMeta(key)
+	if err != nil {
+		return err
+	}
 	var seq = headSeq
 	if !isLeft {
 		seq = tailSeq
