@@ -7,7 +7,6 @@ import (
 	"kv_engine/ds/art"
 	"kv_engine/ds/zset"
 	"kv_engine/flock"
-	"kv_engine/ioselector"
 	"kv_engine/logfile"
 	"kv_engine/logger"
 	"kv_engine/util"
@@ -26,19 +25,21 @@ import (
 
 var (
 	// key not found
-	ErrKeyNotFound = errors.New("Key not found")
+	ErrKeyNotFound = errors.New("key not found")
 
-	ErrLogFileNotFound = errors.New("Log file not found")
+	ErrLogFileNotFound = errors.New("log file not found")
 
-	ErrWrongNumberOfArgs = errors.New("Wrong number of arguments")
+	ErrWrongNumberOfArgs = errors.New("wrong number of arguments")
 
-	ErrIntegerOverflow = errors.New("Increment or decrement overflow")
+	ErrIntegerOverflow = errors.New("increment or decrement overflow")
 
 	ErrWrongValueType = errors.New("value is not an integer")
 
 	ErrGCRunning = errors.New("log file gc is running, retry later")
 
 	ErrIndexOutOfRange = errors.New("index out of range")
+
+	ErrIndexStartLagerThanEnd = errors.New("start physical seq lager than end physical seq")
 )
 
 const (
@@ -55,17 +56,17 @@ type (
 		archivedLogFiles map[DataType]archivedFiles
 		fidMap           map[DataType][]uint32 // only used at startup, never update even though log files changed.
 		discards         map[DataType]*discard
-		dumpState        ioselector.IOSelector
-		opts             Options
-		strIndex         *strIndex
-		listIndex        *listIndex
-		hashIndex        *hashIndex
-		setIndex         *setIndex
-		zsetIndex        *zsetIndex
-		mu               *sync.RWMutex
-		fileLock         *flock.FileLockGuard
-		closed           uint32
-		gcState          int32
+		// dumpState        ioselector.IOSelector
+		opts      Options
+		strIndex  *strIndex
+		listIndex *listIndex
+		hashIndex *hashIndex
+		setIndex  *setIndex
+		zsetIndex *zsetIndex
+		mu        *sync.RWMutex
+		fileLock  *flock.FileLockGuard
+		closed    uint32
+		gcState   int32
 	}
 
 	archivedFiles map[uint32]*logfile.LogFile

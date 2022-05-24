@@ -2,7 +2,6 @@ package kv_engine
 
 import (
 	"encoding/binary"
-	"errors"
 	"kv_engine/ds/art"
 	"kv_engine/logfile"
 	"kv_engine/logger"
@@ -102,14 +101,14 @@ func (db *RoseDB) LIndex(key []byte, index int) ([]byte, error) {
 
 	var seq uint32
 	// logical address to physical seq
-	seq, err = db.convertLogicalIndexToSeq(key, index)
+	seq, err = db.convertLogicalIndexToSeq(headSeq, tailSeq, index)
 	if err != nil {
 		return nil, err
 	}
 
 	// normalize seq
 	if seq >= tailSeq || seq <= headSeq {
-		return nil, errors.New("out of range")
+		return nil, ErrIndexOutOfRange
 	}
 
 	encKey := db.encodeListKey(key, seq)
@@ -148,11 +147,11 @@ func (db *RoseDB) LRange(key []byte, start, end int) (values [][]byte, err error
 	var startSeq, endSeq uint32
 
 	// logical address to physical address
-	startSeq, err = db.convertLogicalIndexToSeq(key, start)
+	startSeq, err = db.convertLogicalIndexToSeq(headSeq, tailSeq, start)
 	if err != nil {
 		return nil, err
 	}
-	endSeq, err = db.convertLogicalIndexToSeq(key, end)
+	endSeq, err = db.convertLogicalIndexToSeq(headSeq, tailSeq, end)
 	if err != nil {
 		return nil, err
 	}
@@ -161,18 +160,18 @@ func (db *RoseDB) LRange(key []byte, start, end int) (values [][]byte, err error
 		startSeq = headSeq + 1
 	}
 	if startSeq >= tailSeq {
-		return nil, errors.New("start index out of range")
+		return nil, ErrIndexOutOfRange
 	}
 	// normalize endSeq
 	if endSeq >= tailSeq {
 		endSeq = tailSeq - 1
 	}
 	if endSeq <= headSeq {
-		return nil, errors.New("end index out of range")
+		return nil, ErrIndexOutOfRange
 	}
 
 	if startSeq > endSeq {
-		return nil, errors.New("start physical seq lager than end physical seq")
+		return nil, ErrIndexStartLagerThanEnd
 	}
 
 	// the endSeq value is including
@@ -188,15 +187,8 @@ func (db *RoseDB) LRange(key []byte, start, end int) (values [][]byte, err error
 	return values, nil
 }
 
-// convertLogicalIndexToSeq convert logical index to physical seq
-func (db *RoseDB) convertLogicalIndexToSeq(key []byte, index int) (uint32, error) {
-	headSeq, tailSeq, err := db.listMeta(key)
-	if err != nil {
-		return initialListSeq, err
-	}
-	if headSeq == initialListSeq && tailSeq == initialListSeq+1 {
-		return initialListSeq, ErrKeyNotFound
-	}
+// convertLogicalIndexToSeq just convert logical index to physical seq
+func (db *RoseDB) convertLogicalIndexToSeq(headSeq, tailSeq uint32, index int) (uint32, error) {
 	var seq uint32
 
 	if index >= 0 {
