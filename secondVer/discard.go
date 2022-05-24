@@ -26,9 +26,12 @@ var ErrDiscardNoSpace = errors.New("not enough space can be allocated for the di
 // Mainly for log files compaction.
 type discard struct {
 	sync.Mutex
-	valChan  chan *indexNode
-	file     ioselector.IOSelector
-	freeList []int64          // contains file offset that can be allocated
+	valChan chan *indexNode
+	file    ioselector.IOSelector
+	// freeList Discard文件可以用于分配记录 discard entry 的offset
+	freeList []int64 // contains file offset that can be allocated
+	// location fid 在discard 文件中的偏移量
+	// 读取discard 文件，可以解析该文件 discard size /total size
 	location map[uint32]int64 // offset of each fid
 }
 
@@ -60,7 +63,6 @@ func newDiscard(path, name string, bufferSize int) (*discard, error) {
 		}
 		offset += discardRecordSize
 	}
-
 	d := &discard{
 		valChan:  make(chan *indexNode, bufferSize),
 		file:     file,
@@ -212,6 +214,7 @@ func (d *discard) alloc(fid uint32) (int64, error) {
 	if offset, ok := d.location[fid]; ok {
 		return offset, nil
 	}
+	// discard 文件的entry 记录都被使用
 	if len(d.freeList) == 0 {
 		return 0, ErrDiscardNoSpace
 	}

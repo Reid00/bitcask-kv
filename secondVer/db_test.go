@@ -47,7 +47,6 @@ func TestLogFileGC(t *testing.T) {
 
 	writeCount := 800000
 	for i := 0; i < writeCount; i++ {
-
 		err := db.Set(GetKey(i), GetValue128B())
 		assert.Nil(t, err, "err is not nil")
 	}
@@ -66,7 +65,7 @@ func TestLogFileGC(t *testing.T) {
 		_, err := db.Get(key)
 		assert.Equal(t, err, ErrKeyNotFound)
 	}
-
+	select {}
 }
 
 func destroyDB(db *RoseDB) {

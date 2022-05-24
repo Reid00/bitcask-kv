@@ -268,7 +268,7 @@ func (db *RoseDB) loadIndexFromLogFiles() error {
 					if err == io.EOF || err == logfile.ErrEndOfEntry {
 						break
 					}
-					logger.Fatalf("read log entry from file err, failed to open db")
+					logger.Fatalf("read log entry from file err, failed to open db, err is: %v", err)
 				}
 				pos := &valuePos{
 					fid:    fid,

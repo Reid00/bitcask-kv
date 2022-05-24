@@ -379,6 +379,7 @@ func (db *RoseDB) handleLogFileGC() {
 			}
 
 			for dType := String; dType < logFileTypeNum; dType++ {
+				logger.Infof("[%v] log file gc start", dType)
 				go func(dataType DataType) {
 					err := db.doRunGC(dataType, -1, db.opts.LogFileGCRatio)
 					if err != nil {
