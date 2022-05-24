@@ -193,7 +193,6 @@ func Open(opts Options) (*RoseDB, error) {
 	if err := db.LoadLogFiles(); err != nil {
 		return nil, err
 	}
-	logger.Info("here 3 =============")
 
 	// load indexes from log files
 	if err := db.loadIndexFromLogFiles(); err != nil {

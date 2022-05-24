@@ -52,6 +52,21 @@ func TestLogFileGC(t *testing.T) {
 		assert.Nil(t, err, "err is not nil")
 	}
 
+	var deleted [][]byte
+	for i := 0; i < 100000; i++ {
+		k := rand.Intn(writeCount)
+		key := GetKey(k)
+		err := db.Delete(key)
+		assert.Nil(t, err)
+		deleted = append(deleted, key)
+	}
+
+	time.Sleep(12 * time.Second)
+	for _, key := range deleted {
+		_, err := db.Get(key)
+		assert.Equal(t, err, ErrKeyNotFound)
+	}
+
 }
 
 func destroyDB(db *RoseDB) {
@@ -79,6 +94,7 @@ func GetValue16B() []byte {
 	return GetValue(16)
 }
 
+// GetValue128B generate 128Byte value
 func GetValue128B() []byte {
 	return GetValue(128)
 }
