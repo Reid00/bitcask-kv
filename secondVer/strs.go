@@ -101,10 +101,11 @@ func (db *RoseDB) Delete(key []byte) error {
 	if err != nil {
 		return err
 	}
-
+	// 原先的旧值需要回收
 	val, updated := db.strIndex.idxTree.Delete(key)
 	db.sendDiscard(val, updated, String)
 	// the deleted entry itself is also invalid.
+	// 新写入的deletedEntry 也要被回收
 	_, size := logfile.EncodeEntry(entry)
 	node := &indexNode{fid: pos.fid, entrySize: size}
 	select {

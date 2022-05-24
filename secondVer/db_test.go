@@ -65,7 +65,6 @@ func TestLogFileGC(t *testing.T) {
 		_, err := db.Get(key)
 		assert.Equal(t, err, ErrKeyNotFound)
 	}
-	select {}
 }
 
 func destroyDB(db *RoseDB) {
