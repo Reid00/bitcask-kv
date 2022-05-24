@@ -62,7 +62,7 @@ type (
 		hashIndex        *hashIndex
 		setIndex         *setIndex
 		zsetIndex        *zsetIndex
-		mu               *sync.RWMutex
+		mu               sync.RWMutex
 		fileLock         *flock.FileLockGuard
 		closed           uint32
 		gcState          int32
@@ -162,7 +162,6 @@ func Open(opts Options) (*RoseDB, error) {
 			return nil, err
 		}
 	}
-
 	// acquire file lock to prevent multiple processes from accessing the same directory.
 	lockPath := filepath.Join(opts.DBPath, lockFileName)
 
@@ -192,6 +191,7 @@ func Open(opts Options) (*RoseDB, error) {
 	if err := db.LoadLogFiles(); err != nil {
 		return nil, err
 	}
+	logger.Info("here 3 =============")
 
 	// load indexes from log files
 	if err := db.loadIndexFromLogFiles(); err != nil {
