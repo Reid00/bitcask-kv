@@ -19,18 +19,18 @@ func TestOpen(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
 		opts := DefaultOptions(path)
 		db, err := Open(opts)
+		assert.Nil(t, err)
+		defer destroyDB(db)
+		assert.NotNil(t, db)
+	})
+
+	t.Run("mmap", func(t *testing.T) {
+		opts := DefaultOptions(path)
+		db, err := Open(opts)
 		defer destroyDB(db)
 		assert.Nil(t, err)
 		assert.NotNil(t, db)
 	})
-
-	// t.Run("mmap", func(t *testing.T) {
-	// 	opts := DefaultOptions(path)
-	// 	db, err := Open(opts)
-	// 	defer destroyDB(db)
-	// 	assert.Nil(t, err)
-	// 	assert.NotNil(t, db)
-	// })
 }
 
 func TestLogFileGC(t *testing.T) {
@@ -47,11 +47,11 @@ func TestLogFileGC(t *testing.T) {
 
 	writeCount := 800000
 	for i := 0; i < writeCount; i++ {
-		
+
 		err := db.Set(GetKey(i), GetValue128B())
 		assert.Nil(t, err, "err is not nil")
 	}
-	
+
 }
 
 func destroyDB(db *RoseDB) {

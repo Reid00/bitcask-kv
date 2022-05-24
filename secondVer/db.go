@@ -7,6 +7,7 @@ import (
 	"kv_engine/ds/art"
 	"kv_engine/ds/zset"
 	"kv_engine/flock"
+	"kv_engine/ioselector"
 	"kv_engine/logfile"
 	"kv_engine/logger"
 	"kv_engine/util"
@@ -56,17 +57,17 @@ type (
 		archivedLogFiles map[DataType]archivedFiles
 		fidMap           map[DataType][]uint32 // only used at startup, never update even though log files changed.
 		discards         map[DataType]*discard
-		// dumpState        ioselector.IOSelector
-		opts      Options
-		strIndex  *strIndex
-		listIndex *listIndex
-		hashIndex *hashIndex
-		setIndex  *setIndex
-		zsetIndex *zsetIndex
-		mu        *sync.RWMutex
-		fileLock  *flock.FileLockGuard
-		closed    uint32
-		gcState   int32
+		dumpState        ioselector.IOSelector
+		opts             Options
+		strIndex         *strIndex
+		listIndex        *listIndex
+		hashIndex        *hashIndex
+		setIndex         *setIndex
+		zsetIndex        *zsetIndex
+		mu               sync.RWMutex
+		fileLock         *flock.FileLockGuard
+		closed           uint32
+		gcState          int32
 	}
 
 	archivedFiles map[uint32]*logfile.LogFile
@@ -163,7 +164,6 @@ func Open(opts Options) (*RoseDB, error) {
 			return nil, err
 		}
 	}
-
 	// acquire file lock to prevent multiple processes from accessing the same directory.
 	lockPath := filepath.Join(opts.DBPath, lockFileName)
 
@@ -193,6 +193,7 @@ func Open(opts Options) (*RoseDB, error) {
 	if err := db.LoadLogFiles(); err != nil {
 		return nil, err
 	}
+	logger.Info("here 3 =============")
 
 	// load indexes from log files
 	if err := db.loadIndexFromLogFiles(); err != nil {
