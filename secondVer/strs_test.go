@@ -29,7 +29,7 @@ func TestRoseDB_Set(t *testing.T) {
 }
 
 func TestRoseDB_Set_LogFileThreshold(t *testing.T) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = MMap
 	opts.LogFileSizeThreshold = 32 << 20
@@ -58,7 +58,7 @@ func TestRoseDB_Get(t *testing.T) {
 }
 
 func TestRoseDB_Get_LogFileThreshold(t *testing.T) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = MMap
 	opts.LogFileSizeThreshold = 32 << 20
@@ -82,7 +82,7 @@ func TestRoseDB_Get_LogFileThreshold(t *testing.T) {
 }
 
 func testRoseDBSet(t *testing.T, ioType IOType, mode DataIndexMode) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = ioType
 	opts.IndexMode = mode
@@ -120,7 +120,7 @@ func testRoseDBSet(t *testing.T, ioType IOType, mode DataIndexMode) {
 }
 
 func testRoseDBGet(t *testing.T, ioType IOType, mode DataIndexMode) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = ioType
 	opts.IndexMode = mode
@@ -184,7 +184,7 @@ func TestRoseDB_MGet(t *testing.T) {
 }
 
 func testRoseDBMGet(t *testing.T, ioType IOType, mode DataIndexMode) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = ioType
 	opts.IndexMode = mode
@@ -322,7 +322,7 @@ func TestRoseDB_Delete(t *testing.T) {
 }
 
 func TestRoseDB_Delete_MultiFiles(t *testing.T) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = FileIO
 	opts.LogFileSizeThreshold = 32 << 20
@@ -351,7 +351,7 @@ func TestRoseDB_Delete_MultiFiles(t *testing.T) {
 }
 
 func testRoseDBDelete(t *testing.T, ioType IOType, mode DataIndexMode) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = ioType
 	opts.IndexMode = mode
@@ -403,7 +403,7 @@ func TestRoseDB_SetEx(t *testing.T) {
 }
 
 func testRoseDBSetEx(t *testing.T, mode DataIndexMode) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IndexMode = mode
 	db, err := Open(opts)
@@ -418,6 +418,7 @@ func testRoseDBSetEx(t *testing.T, mode DataIndexMode) {
 	assert.Equal(t, ErrKeyNotFound, err)
 
 	err = db.SetEX(GetKey(2), GetValue16B(), time.Second*200)
+	assert.Nil(t, err)
 	time.Sleep(time.Millisecond * 200)
 	v1, err := db.Get(GetKey(2))
 	assert.NotNil(t, v1)
@@ -428,6 +429,7 @@ func testRoseDBSetEx(t *testing.T, mode DataIndexMode) {
 	assert.Nil(t, err)
 
 	err = db.SetEX(GetKey(3), GetValue16B(), time.Millisecond*200)
+	assert.Nil(t, err)
 	time.Sleep(time.Millisecond * 205)
 	v2, err := db.Get(GetKey(3))
 	assert.Equal(t, 0, len(v2))
@@ -449,7 +451,7 @@ func TestRoseDB_SetNX(t *testing.T) {
 }
 
 func testRoseDBSetNX(t *testing.T, ioType IOType, mode DataIndexMode) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = ioType
 	opts.IndexMode = mode
@@ -547,7 +549,7 @@ func TestRoseDB_MSet(t *testing.T) {
 }
 
 func testRoseDBMSet(t *testing.T, ioType IOType, mode DataIndexMode) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = ioType
 	opts.IndexMode = mode
@@ -634,7 +636,7 @@ func TestRoseDB_Append(t *testing.T) {
 }
 
 func testRoseDBAppend(t *testing.T, ioType IOType, mode DataIndexMode) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = ioType
 	opts.IndexMode = mode
@@ -689,7 +691,7 @@ func TestRoseDB_MSetNX(t *testing.T) {
 }
 
 func testRoseDBMSetNX(t *testing.T, ioType IOType, mode DataIndexMode) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = ioType
 	opts.IndexMode = mode
@@ -808,7 +810,7 @@ func TestRoseDB_Decr(t *testing.T) {
 }
 
 func testRoseDBDecr(t *testing.T, ioType IOType, mode DataIndexMode) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = ioType
 	opts.IndexMode = mode
@@ -904,7 +906,7 @@ func TestRoseDB_DecrBy(t *testing.T) {
 }
 
 func testRoseDBDecrBy(t *testing.T, ioType IOType, mode DataIndexMode) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = ioType
 	opts.IndexMode = mode
@@ -1027,7 +1029,7 @@ func TestRoseDB_Incr(t *testing.T) {
 }
 
 func testRoseDBIncr(t *testing.T, ioType IOType, mode DataIndexMode) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = ioType
 	opts.IndexMode = mode
@@ -1123,7 +1125,7 @@ func TestRoseDB_IncrBy(t *testing.T) {
 }
 
 func testRoseDBIncrBy(t *testing.T, ioType IOType, mode DataIndexMode) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = ioType
 	opts.IndexMode = mode
@@ -1246,7 +1248,7 @@ func TestRoseDB_StrLen(t *testing.T) {
 }
 
 func testRoseDBStrLen(t *testing.T, ioType IOType, mode DataIndexMode) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = ioType
 	opts.IndexMode = mode
@@ -1307,7 +1309,7 @@ func TestRoseDB_GetDel(t *testing.T) {
 }
 
 func testRoseDBGetDel(t *testing.T, ioType IOType, mode DataIndexMode) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.IoType = ioType
 	opts.IndexMode = mode
@@ -1372,7 +1374,7 @@ func testRoseDBGetDel(t *testing.T, ioType IOType, mode DataIndexMode) {
 
 func TestRoseDB_DiscardStat_Strs(t *testing.T) {
 	helper := func(isDelete bool) {
-		path := filepath.Join("/tmp", "rosedb")
+		path := filepath.Join("/tmp", "kv_engine")
 		opts := DefaultOptions(path)
 		opts.LogFileSizeThreshold = 64 << 20
 		db, err := Open(opts)
@@ -1412,7 +1414,7 @@ func TestRoseDB_DiscardStat_Strs(t *testing.T) {
 }
 
 func TestRoseDB_StrsGC(t *testing.T) {
-	path := filepath.Join("/tmp", "rosedb")
+	path := filepath.Join("/tmp", "kv_engine")
 	opts := DefaultOptions(path)
 	opts.LogFileSizeThreshold = 64 << 20
 	db, err := Open(opts)
