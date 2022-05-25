@@ -4,6 +4,7 @@ import (
 	"kv_engine/ds/art"
 	"kv_engine/logfile"
 	"kv_engine/logger"
+	"log"
 )
 
 // HSet sets field in the hash stored at key to value. If key does not exist, a new key holding a hash is created.
@@ -27,6 +28,7 @@ func (db *RoseDB) HSet(key, field, value []byte) error {
 	entry := &logfile.LogEntry{Key: field, Value: value}
 	_, size := logfile.EncodeEntry(ent)
 	valuePos.entrySize = size
+	log.Printf("HMSET: %#v \n %#v\n %#v\n", valuePos, ent, entry)
 	return db.updateIndexTree(entry, valuePos, true, Hash)
 }
 
@@ -55,7 +57,7 @@ func (db *RoseDB) HMSet(key []byte, args ...[]byte) error {
 		db.hashIndex.idxTree = db.hashIndex.trees[string(key)]
 
 		ent := &logfile.LogEntry{Key: f, Value: v}
-		_, size := logfile.EncodeEntry(ent)
+		_, size := logfile.EncodeEntry(entry)
 		valuePos.entrySize = size
 		err = db.updateIndexTree(ent, valuePos, true, Hash)
 		if err != nil {
