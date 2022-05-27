@@ -199,7 +199,7 @@ func (db *RoseDB) getVal(key []byte, dataType DataType) ([]byte, error) {
 	}
 
 	idxNode, _ := rawValue.(*indexNode)
-	if idxNode != nil {
+	if idxNode == nil {
 		return nil, ErrKeyNotFound
 	}
 

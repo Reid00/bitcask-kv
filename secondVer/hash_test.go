@@ -37,10 +37,7 @@ func testRoseDBHMSet(t *testing.T, ioType IOType, mode DataIndexMode) {
 		wantErr bool
 	}{
 		{
-			"nil", db, args{key: nil, arg: [][]byte{[]byte("field-0"), []byte("val-0")}}, false,
-		},
-		{
-			"nil-value", db, args{key: GetKey(1), arg: [][]byte{[]byte("field-0"), nil}}, false,
+			"nil-key-and-field", db, args{key: nil, arg: [][]byte{nil, []byte("val-0")}}, false,
 		},
 		{
 			"wrong-num-of-args", db, args{key: GetKey(2), arg: [][]byte{[]byte("field-0")}}, true,
@@ -66,16 +63,10 @@ func testRoseDBHMSet(t *testing.T, ioType IOType, mode DataIndexMode) {
 		})
 	}
 
-	t.Run("check-key-nil", func(t *testing.T) {
-		val, err := db.HGet(nil, []byte("field-0"))
+	t.Run("check-nil-key-and-field", func(t *testing.T) {
+		val, err := db.HGet(nil, nil)
 		assert.Nil(t, err)
-		assert.Equal(t, []byte("val-0"), val)
-	})
-
-	t.Run("check-val-nil", func(t *testing.T) {
-		val, err := db.HGet(nil, []byte("field-0"))
-		assert.Nil(t, err)
-		assert.Equal(t, []byte("val-0"), val)
+		assert.Equal(t, []byte(nil), val)
 	})
 
 	t.Run("check-single-field", func(t *testing.T) {
@@ -91,12 +82,11 @@ func testRoseDBHMSet(t *testing.T, ioType IOType, mode DataIndexMode) {
 	})
 }
 
-
 func TestRoseDB_HSet(t *testing.T) {
 	t.Run("fileio", func(t *testing.T) {
 		testRoseDBHSet(t, FileIO, KeyOnlyMemMode)
 	})
-	t.Run("fileio", func(t *testing.T) {
+	t.Run("mmap", func(t *testing.T) {
 		testRoseDBHSet(t, MMap, KeyValueMemMode)
 	})
 }
@@ -108,7 +98,7 @@ func testRoseDBHSet(t *testing.T, ioType IOType, mode DataIndexMode) {
 	opts.IndexMode = mode
 	db, err := Open(opts)
 	assert.Nil(t, err)
-	// defer destroyDB(db)
+	defer destroyDB(db)
 
 	type args struct {
 		key   []byte
@@ -122,13 +112,19 @@ func testRoseDBHSet(t *testing.T, ioType IOType, mode DataIndexMode) {
 		wantErr bool
 	}{
 		{
-			"nil", db, args{key: nil, field: nil, value: GetKey(123)}, false,
+			"nil-key-and-field", db, args{key: nil, field: nil, value: GetKey(00)}, false,
 		},
 		{
-			"nil-value", db, args{key: GetKey(1), field: GetKey(11), value: nil}, false,
+			"nil-key", db, args{key: nil, field: GetKey(1), value: GetKey(11)}, false,
 		},
 		{
-			"normal", db, args{key: GetKey(1), field: GetKey(11), value: GetValue16B()}, false,
+			"nil-value", db, args{key: GetKey(2), field: GetKey(2), value: nil}, false,
+		},
+		{
+			"normal", db, args{key: GetKey(3), field: GetKey(3), value: []byte("1")}, false,
+		},
+		{
+			"normal-2", db, args{key: GetKey(4), field: GetKey(4), value: []byte("4")}, false,
 		},
 	}
 	for _, tt := range tests {
@@ -138,4 +134,28 @@ func testRoseDBHSet(t *testing.T, ioType IOType, mode DataIndexMode) {
 			}
 		})
 	}
+
+	t.Run("check-nil-key-and-field", func(t *testing.T) {
+		val, err := db.HGet(nil, nil)
+		assert.Nil(t, err)
+		assert.Equal(t, []byte(nil), val)
+	})
+
+	t.Run("check-nil-key", func(t *testing.T) {
+		val, err := db.HGet(nil, GetKey(1))
+		assert.Nil(t, err)
+		assert.Equal(t, GetKey(11), val)
+	})
+
+	t.Run("check-nil-val", func(t *testing.T) {
+		val, err := db.HGet(GetKey(2), GetKey(2))
+		assert.Nil(t, err)
+		assert.Equal(t, []byte(""), val)
+	})
+	t.Run("check-normal", func(t *testing.T) {
+		val, err := db.HGet(GetKey(3), GetKey(3))
+		assert.Nil(t, err)
+		assert.Equal(t, []byte("1"), val)
+	})
+
 }

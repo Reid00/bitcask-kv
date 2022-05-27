@@ -342,7 +342,7 @@ func (db *RoseDB) initLogFile(dataType DataType) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	if db.archivedLogFiles[dataType] != nil {
+	if db.activeLogFiles[dataType] != nil {
 		return nil
 	}
 
