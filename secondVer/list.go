@@ -122,9 +122,8 @@ func (db *RoseDB) LIndex(key []byte, index int) ([]byte, error) {
 }
 
 // LRange returns the specified elements of the list stored at key.
-// The offsets start and stop are zero-based indexes,
-// with 0 being the first element of the list (the head of the list),
-// 1 being the next element and so on.
+// The offsets start and stop are zero-based indexes, with 0 being the first element
+// of the list (the head of the list), 1 being the next element and so on.
 // These offsets can also be negative numbers indicating offsets starting at the end of the list.
 // For example, -1 is the last element of the list, -2 the penultimate, and so on.
 // If start is larger than the end of the list, an empty list is returned.
@@ -174,7 +173,7 @@ func (db *RoseDB) LRange(key []byte, start, end int) (values [][]byte, err error
 		return nil, ErrIndexStartLagerThanEnd
 	}
 
-	// the endSeq value is including
+	// the endSeq value is included
 	for seq := startSeq; seq < endSeq+1; seq++ {
 		encKey := db.encodeListKey(key, seq)
 		val, err := db.getVal(encKey, List)
@@ -188,6 +187,7 @@ func (db *RoseDB) LRange(key []byte, start, end int) (values [][]byte, err error
 }
 
 // convertLogicalIndexToSeq just convert logical index to physical seq
+// whether physical seq is legal or not, just convert
 func (db *RoseDB) convertLogicalIndexToSeq(headSeq, tailSeq uint32, index int) (uint32, error) {
 	var seq uint32
 
