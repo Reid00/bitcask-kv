@@ -2,8 +2,8 @@ package list
 
 import (
 	"encoding/binary"
-	"kv_engine/logfile"
-	"kv_engine/logger"
+	"github.com/reid00/kv_engine/logfile"
+	"github.com/reid00/kv_engine/logger"
 	"math"
 
 	goart "github.com/plar/go-adaptive-radix-tree"

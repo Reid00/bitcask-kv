@@ -2,7 +2,7 @@ package hash
 
 import (
 	"encoding/binary"
-	"kv_engine/logfile"
+	"github.com/reid00/kv_engine/logfile"
 )
 
 type EncodeKey func(key, subKey []byte) []byte

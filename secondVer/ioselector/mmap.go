@@ -2,7 +2,7 @@ package ioselector
 
 import (
 	"io"
-	"kv_engine/mmap"
+	"github.com/reid00/kv_engine/mmap"
 	"os"
 )
 

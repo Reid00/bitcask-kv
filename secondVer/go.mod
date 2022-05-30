@@ -1,4 +1,4 @@
-module kv_engine
+module github.com/reid00/kv_engine
 
 go 1.18
 

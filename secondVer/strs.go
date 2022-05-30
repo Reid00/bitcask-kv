@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"kv_engine/logfile"
-	"kv_engine/logger"
-	"kv_engine/util"
 	"math"
 	"strconv"
 	"time"
+
+	"github.com/reid00/kv_engine/logfile"
+	"github.com/reid00/kv_engine/logger"
+	"github.com/reid00/kv_engine/util"
 )
 
 // Set set key to hold the string value. If key already holds a value, it is overwritten.

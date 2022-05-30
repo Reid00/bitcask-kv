@@ -1,8 +1,8 @@
 package zset
 
 import (
-	"kv_engine/logfile"
-	"kv_engine/util"
+	"github.com/reid00/kv_engine/logfile"
+	"github.com/reid00/kv_engine/util"
 	"math"
 	"math/rand"
 )

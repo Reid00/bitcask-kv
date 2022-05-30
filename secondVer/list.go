@@ -2,9 +2,10 @@ package kv_engine
 
 import (
 	"encoding/binary"
-	"kv_engine/ds/art"
-	"kv_engine/logfile"
-	"kv_engine/logger"
+
+	"github.com/reid00/kv_engine/ds/art"
+	"github.com/reid00/kv_engine/logfile"
+	"github.com/reid00/kv_engine/logger"
 )
 
 // LPush insert all the specified values at the head of the list stored at key.

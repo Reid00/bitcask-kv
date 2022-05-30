@@ -1,7 +1,7 @@
 package set
 
 import (
-	"kv_engine/logfile"
+	"github.com/reid00/kv_engine/logfile"
 )
 
 var existFlag = struct{}{}

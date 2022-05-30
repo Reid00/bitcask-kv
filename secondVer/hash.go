@@ -1,9 +1,9 @@
 package kv_engine
 
 import (
-	"kv_engine/ds/art"
-	"kv_engine/logfile"
-	"kv_engine/logger"
+	"github.com/reid00/kv_engine/ds/art"
+	"github.com/reid00/kv_engine/logfile"
+	"github.com/reid00/kv_engine/logger"
 )
 
 // HSet sets field in the hash stored at key to value. If key does not exist, a new key holding a hash is created.

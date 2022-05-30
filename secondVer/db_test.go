@@ -3,7 +3,7 @@ package kv_engine
 import (
 	"bytes"
 	"fmt"
-	"kv_engine/logger"
+	"github.com/reid00/kv_engine/logger"
 	"math/rand"
 	"os"
 	"path/filepath"

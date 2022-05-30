@@ -2,14 +2,15 @@ package kv_engine
 
 import (
 	"io"
-	"kv_engine/ds/art"
-	"kv_engine/logfile"
-	"kv_engine/logger"
-	"kv_engine/util"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/reid00/kv_engine/ds/art"
+	"github.com/reid00/kv_engine/logfile"
+	"github.com/reid00/kv_engine/logger"
+	"github.com/reid00/kv_engine/util"
 )
 
 // DataType Define the data structure type.
