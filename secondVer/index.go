@@ -91,7 +91,7 @@ func (db *RoseDB) buildListIndex(entry *logfile.LogEntry, pos *valuePos) {
 	if entry.ExpireAt != 0 {
 		idxNode.expiredAt = entry.ExpireAt
 	}
-	db.listIndex.idxTree.Put(entry.Key, entry.Value)
+	db.listIndex.idxTree.Put(entry.Key, idxNode)
 }
 
 func (db *RoseDB) buildHashIndex(entry *logfile.LogEntry, pos *valuePos) {
