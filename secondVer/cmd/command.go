@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/reid00/kv_engine"
+	"github.com/tidwall/redcon"
 )
 
 const (
@@ -64,4 +65,37 @@ func selectDB(cli *Client, args [][]byte) (interface{}, error) {
 	}
 	cli.db = db
 	return resultOK, nil
+}
+
+func ping(cl *Client, args [][]byte) (any, error) {
+	if len(args) > 1 {
+		return nil, newWrongNumOfArgsError("ping")
+	}
+	var res = resultPong
+	if len(args) == 1 {
+		res = string(args[0])
+	}
+	return res, nil
+}
+
+// +-------+--------+----------+------------+-----------+-------+---------+
+// |-------------------------- generic commands --------------------------|
+// +-------+--------+----------+------------+-----------+-------+---------+
+func del(cli *Client, args [][]byte) (any, error) {
+	if len(args) < 1 {
+		return nil, newWrongNumOfArgsError("del")
+	}
+
+	for _, key := range args {
+		if err := cli.db.Delete(key); err != nil {
+			return 0, err
+		}
+		//TODO delete other db
+	}
+	return redcon.SimpleInt(1), nil
+}
+
+func keyType(cli *Client, args [][]byte) (any, error) {
+	// TODO
+	return "string", nil
 }

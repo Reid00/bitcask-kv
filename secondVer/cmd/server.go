@@ -76,7 +76,7 @@ func main() {
 	logger.Infof("open db from [%s] successfully, time cost: %v", serverOpts.dbPath, time.Since(now))
 
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	dbs := make(map[int]*kv_engine.RoseDB)
 
@@ -93,34 +93,34 @@ func main() {
 	addr := svr.opts.host + ":" + svr.opts.port
 
 	redServer := redcon.NewServerNetwork("tcp", addr, execClientCommand, svr.redconAccept,
-			func (conn redcon.Conn, err error) {
+		func(conn redcon.Conn, err error) {
 
-			},
-		)
+		},
+	)
 
 	svr.svr = redServer
 	go svr.listen()
-	<- svr.singal
+	<-svr.singal
 	svr.stop()
 }
 
-func (svr *Server) listen()  {
+func (svr *Server) listen() {
 	logger.Infof("rosedb server is running, ready to accept conection")
 	if err := svr.svr.ListenAndServe(); err != nil {
-		logger.Fatalf("listen and serve err, fail to start. %v\n", err)	
-		return 
+		logger.Fatalf("listen and serve err, fail to start. %v\n", err)
+		return
 	}
 }
 
-func (svr *Server) stop()  {
+func (svr *Server) stop() {
 	for _, db := range svr.dbs {
 		if err := db.Close(); err != nil {
-			logger.Errorf("close db err: %v", err)	
+			logger.Errorf("close db err: %v", err)
 		}
 	}
 
 	if err := svr.svr.Close(); err != nil {
-		logger.Errorf("close server err: %v", err)	
+		logger.Errorf("close server err: %v", err)
 	}
 	logger.Info("rosedb is ready to exit, byt byte...")
 }

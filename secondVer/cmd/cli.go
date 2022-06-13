@@ -48,14 +48,14 @@ var supportedCommands = map[string]cmdHandler{
 	// string commands
 
 	// generic commands
-	// "type": keyType,
-	// "del":  del,
+	"type": keyType,
+	"del":  del,
 
-	// // connection management commands
-	// "select": selectDB,
-	// "ping":   ping,
-	// "quit":   nil,
+	// connection management commands
+	"select": selectDB,
+	"ping":   ping,
+	"quit":   nil,
 
-	// // server management commands
-	// "info": info,
+	// server management commands
+	"info": info,
 }
