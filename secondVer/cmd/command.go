@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/reid00/kv_engine"
 	"github.com/tidwall/redcon"
@@ -98,4 +100,38 @@ func del(cli *Client, args [][]byte) (any, error) {
 func keyType(cli *Client, args [][]byte) (any, error) {
 	// TODO
 	return "string", nil
+}
+
+// +-------+--------+----------+------------+-----------+-------+---------+
+// |-------------------------- String commands --------------------------|
+// +-------+--------+----------+------------+-----------+-------+---------+
+func set(cli *Client, args [][]byte) (any, error) {
+	if len(args) < 2 {
+		return nil, newWrongNumOfArgsError("set")
+	}
+
+	key, value := args[0], args[1]
+
+	var setErr error
+	if len(args) > 2 {
+		ex := strings.ToLower(string(args[2]))
+		if ex != "ex" || len(args) != 4 {
+			return nil, errSyntax
+		}
+
+		second, err := strconv.Atoi(string(args[3]))
+		if err != nil {
+			return nil, errSyntax
+		}
+
+		setErr = cli.db.SetEX(key, value, time.Duration(second)*time.Second)
+	} else {
+		setErr = cli.db.Set(key, value)
+	}
+
+	if setErr != nil {
+		return nil, setErr
+	}
+
+	return redcon.SimpleString(resultOK), nil
 }

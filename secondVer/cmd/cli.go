@@ -46,6 +46,7 @@ func execClientCommand(conn redcon.Conn, cmd redcon.Command) {
 
 var supportedCommands = map[string]cmdHandler{
 	// string commands
+	"set": set,
 
 	// generic commands
 	"type": keyType,
