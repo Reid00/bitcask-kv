@@ -33,7 +33,7 @@ const (
 
 func init() {
 	// print basic infomation
-	path, _ := filepath.Abs("resource/banner.txt")
+	path, _ := filepath.Abs("../resource/banner.txt")
 	banner, _ := os.ReadFile(path)
 	fmt.Println(string(banner))
 }
